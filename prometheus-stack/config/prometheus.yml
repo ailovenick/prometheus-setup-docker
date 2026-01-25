@@ -1,0 +1,43 @@
+global:
+  # Частота сбора метрик (рекомендуемое значение 15-30с)
+  scrape_interval: 15s
+  # Частота проверки правил алертов (время реакции на сбой)
+  evaluation_interval: 15s
+
+# [ALERTS] Подключение Alertmanager
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      # При использовании network_mode: host обращение происходит напрямую по порту
+      - localhost:9093
+
+# [RULES] Файлы с правилами мониторинга (условия отправки алертов)
+rule_files:
+  - "alert_rules.yml"
+
+scrape_configs:
+  # [SELF-MONITORING] Мониторинг самого экземпляра Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # [HOST MONITORING] Основной хост (метрики оборудования: CPU, RAM, Disk)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+        labels:
+          instance: 'primary-host'
+          location: 'main-dc'
+
+  # [SERVICES MONITORING]
+  # Важно: При запуске экспортеров в контейнерах с network_mode: host или пробросом портов,
+  # они доступны для Prometheus по адресу localhost.
+
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['localhost:9113'] 
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['localhost:9187']

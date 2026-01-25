@@ -1,0 +1,37 @@
+groups:
+  - name: health_checks
+    rules:
+      # 1. Проверка доступности инстансов (любой таргет из prometheus.yml)
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Сервис {{ $labels.instance }} упал"
+          description: "Инстанс {{ $labels.instance }} джоба {{ $labels.job }} недоступен больше 1 минуты."
+
+  - name: host_metrics
+    rules:
+      # 2. Нехватка места на диске (менее 10% свободно)
+      - alert: HostOutOfDiskSpace
+        # Фильтруем корень, исключаем виртуальные ФС
+        expr: (node_filesystem_avail_bytes{mountpoint="/rootfs"} * 100) / node_filesystem_size_bytes{mountpoint="/rootfs"} < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Мало места на диске на {{ $labels.instance }}"
+          description: "На диске (раздел {{ $labels.mountpoint }}) осталось менее 10% свободного места."
+
+  - name: service_specific
+    rules:
+      # 3. Nginx не отвечает (через экспортер)
+      - alert: NginxDown
+        expr: nginx_up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Nginx упал"
+          description: "Nginx на {{ $labels.instance }} перестал отдавать метрики stub_status."

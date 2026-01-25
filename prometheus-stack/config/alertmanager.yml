@@ -1,0 +1,33 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  # [DEDUPLICATION] Группировка алертов
+  # Алерты с одинаковым названием (alertname) объединяются в одно сообщение.
+  group_by: ['alertname']
+  
+  # [DELAY] Время ожидания перед отправкой ПЕРВОГО алерта в группе (для сбора дополнительной информации)
+  group_wait: 10s
+  
+  # [THROTTLING] Время ожидания перед отправкой обновления при поступлении НОВЫХ алертов в ту же группу.
+  group_interval: 10s
+  
+  # [REMINDER] Интервал повторного уведомления, если проблема не решена.
+  repeat_interval: 1h
+  
+  # Получатель по умолчанию
+  receiver: 'default-receiver'
+
+receivers:
+- name: 'default-receiver'
+  # Настройка интеграций: Email, Slack, Telegram, Webhook и т.д.
+  
+  # Пример для Telegram:
+  # telegram_configs:
+  # - bot_token: '123456789:your-bot-token'
+  #   chat_id: -100123456789
+  #   parse_mode: 'HTML'
+
+  # Пример для Webhook (для интеграции с внешними скриптами):
+  # webhook_configs:
+  # - url: 'http://127.0.0.1:5001/alert'

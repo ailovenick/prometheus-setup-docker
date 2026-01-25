@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      # [SECURITY WARNING] В продакшене хранение паролей в plain-text в docker-compose недопустимо.
+      # Рекомендуется использование .env файлов или Docker Secrets.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
+    volumes:
+      # [PERSISTENCE] Данные базы данных.
+      # Отсутствие volume приведет к потере базы данных при удалении контейнера.
+      # Примечание: На Linux может потребоваться 'sudo chown -R 999:999 ./data'
+      # при ошибках прав доступа (UID 999 — пользователь 'postgres').
+      - ./data:/var/lib/postgresql/data
+    ports:
+      # Стандартный порт Postgres. Возможен конфликт при наличии локального Postgres на хосте.
+      - "5432:5432"
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres-exporter
+    restart: unless-stopped
+    environment:
+      # [CONNECTION STRING] Строка подключения для авторизации экспортера в БД.
+      # Формат: postgres://user:password@hostname:port/dbname
+      # Параметр sslmode=disable обязателен при отсутствии настроенных SSL сертификатов.
+      DATA_SOURCE_NAME: "postgresql://postgres:password@postgres:5432/mydatabase?sslmode=disable"
+    ports:
+      # Порт отдачи метрик для Prometheus.
+      - "9187:9187"
+    depends_on:
+      - postgres

@@ -1,0 +1,77 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      # [CONFIG] Главный конфигурационный файл: цели для опроса (targets) и интервалы.
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      # [PERSISTENCE] ВАЖНО: Хранилище метрик (TSDB). 
+      # Без этого volume при перезапуске контейнера история метрик будет утрачена.
+      # Примечание: На Linux права на ./data должны принадлежать UID 65534 (пользователь 'nobody').
+      # Команда: sudo chown -R 65534:65534 ./data
+      - ./data:/prometheus
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      # Указание пути для хранения данных (TSDB)
+      - '--storage.tsdb.path=/prometheus'
+      # [LEGACY] Встроенные шаблоны дашбордов Prometheus (обычно не используются при наличии Grafana)
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    network_mode: "host"
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      # [PERSISTENCE] Хранилище текущих Silences (заглушки алертов).
+      # Необходимо для сохранения состояния заглушенных алертов после перезапуска.
+      - ./alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    network_mode: "host"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    volumes:
+      # [PERSISTENCE] База данных Grafana (SQLite).
+      # Содержит пользователей, дашборды, настройки источников данных.
+      # При потере volume требуется повторная настройка окружения.
+      - ./grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    network_mode: "host"
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: prometheus_node_exporter
+    restart: unless-stopped
+    volumes:
+      # [HOST INTROSPECTION] Настройка доступа к мониторингу хоста из контейнера.
+      # ВАЖНО: /proc и /sys — виртуальные ФС ядра, а не обычные директории.
+      # Проброс только корня (/) недостаточен, так как монтирования не рекурсивны,
+      # и внутри /rootfs/proc будет пусто. Требуется явное монтирование.
+      - /proc:/host/proc:ro # Интерфейс ядра к процессам хоста
+      - /sys:/host/sys:ro   # Интерфейс ядра к оборудованию (CPU, диски, сеть)
+      - /:/rootfs:ro        # Реальная файловая система (используется для метрик диска)
+    command:
+      # Настройка чтения метрик не из контейнерного /proc,
+      # а из примонтированного /host/proc (хостового).
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    network_mode: "host"
+    # [CONTEXT] Необходимость параметра при проброшенном /proc:
+    # Проброс файлов (/proc) предоставляет ТОЛЬКО чтение информации.
+    # pid: "host" позволяет выполнять СИСТЕМНЫЕ ВЫЗОВЫ к процессам хоста.
+    # Без этого экспортер видит процессы в файлах, но при попытке обращения к ним
+    # (например, для проверки лимитов) получит ошибку "No such process" из-за изоляции PID Namespace.
+    pid: "host"
