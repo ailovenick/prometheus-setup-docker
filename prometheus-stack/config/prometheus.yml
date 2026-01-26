@@ -41,3 +41,9 @@ scrape_configs:
   - job_name: 'postgres'
     static_configs:
       - targets: ['localhost:9187']
+
+  # [APP MONITORING] Наше Python приложение
+  # Доступно по localhost, так как проброшено на порт 8000 хоста
+  - job_name: 'app'
+    static_configs:
+      - targets: ['localhost:8000']
