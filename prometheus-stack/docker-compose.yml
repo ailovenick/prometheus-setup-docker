@@ -1,5 +1,6 @@
 services:
   prometheus:
+    # Port: 9090
     image: prom/prometheus:latest
     container_name: prometheus
     restart: unless-stopped
@@ -22,6 +23,7 @@ services:
     network_mode: "host"
 
   alertmanager:
+    # Port: 9093
     image: prom/alertmanager:latest
     container_name: alertmanager
     restart: unless-stopped
@@ -36,6 +38,7 @@ services:
     network_mode: "host"
 
   grafana:
+    # Port: 3000
     image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
@@ -43,6 +46,8 @@ services:
       # [PERSISTENCE] База данных Grafana (SQLite).
       # Содержит пользователей, дашборды, настройки источников данных.
       # При потере volume требуется повторная настройка окружения.
+      # Примечание: На Linux права на ./grafana_data должны принадлежать UID 472 (пользователь 'grafana').
+      # Команда: sudo chown -R 472:472 ./grafana_data
       - ./grafana_data:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_USER=admin
@@ -51,6 +56,7 @@ services:
     network_mode: "host"
 
   node-exporter:
+    # Port: 9100
     image: prom/node-exporter:latest
     container_name: prometheus_node_exporter
     restart: unless-stopped
