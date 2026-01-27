@@ -1,60 +1,63 @@
 # Подключение Windows-хоста к мониторингу (windows_exporter)
 
-Для сбора метрик с Windows (CPU, RAM, Disk, Network, IIS, AD и др.) используется **windows_exporter**.
+Для сбора метрик с Windows используется **windows_exporter**. Самый надежный и простой способ установки — использование MSI-пакета.
 
 ---
 
-## 1. Установка агента (windows_exporter)
+## 1. Установка через MSI
 
-### Вариант А: Быстрая установка (MSI)
-1. Скачать актуальный релиз `.msi` с [GitHub репозитория](https://github.com/prometheus-community/windows_exporter/releases).
-2. Запустить установщик.
-3. По умолчанию экспортер слушает порт **9182**.
+1. Скачайте актуальный релиз `.msi`  с [GitHub репозитория](https://github.com/prometheus-community/windows_exporter/releases).
+2. Запустите установщик. При установке вы увидите:
 
-### Вариант Б: Установка через PowerShell (Automation)
-Рекомендуемый метод для воспроизводимости. Позволяет сразу выбрать нужные коллекторы.
+### Пояснение по полям установки:
 
-```powershell
-# Скачиваем MSI (замените версию на актуальную)
-Invoke-WebRequest -Uri https://github.com/prometheus-community/windows_exporter/releases/download/v0.25.1/windows_exporter-0.25.1-amd64.msi -OutFile windows_exporter.msi
+1.  **Comma-separated list of collectors... (Список коллекторов)**
+    *   *Что это:* Какие метрики собирать.
+    *   *Что писать:* Оставьте пустым, чтобы использовать стандартный набор (`[defaults]`).
+    *   [Список всех коллекторов в документации](https://github.com/prometheus-community/windows_exporter?tab=readme-ov-file#collectors).
 
-# Устанавливаем сервис
-# ENABLED_COLLECTORS: список метрик (cpu,cs,logical_disk,net,os,service,system,textfile)
-# LISTEN_ADDR: адрес и порт (0.0.0.0:9182)
-msiexec /i windows_exporter.msi ENABLED_COLLECTORS="cpu,cs,logical_disk,net,os,service,system" LISTEN_ADDR="0.0.0.0:9182" /qn
-```
+2.  **Additional command line flags (Доп. флаги)**
+    *   *Что это:* Параметры запуска для тонкой настройки.
+    *   *Пример:* `--log.level debug` (включает подробное журналирование для поиска ошибок).
+    *   *Что писать:* Оставьте пустым.
+
+3.  **Port to listen (Порт)**
+    *   *По умолчанию:* `9182`
+    *   *Что писать:* Меняйте только если этот порт занят другим приложением.
+
+4.  **Path to config file (Путь к конфигу)**
+    *   *Зачем нужен:* Позволяет вынести сложные настройки в отдельный файл вместо длинной командной строки. Например, через конфиг можно указать regex-фильтры, чтобы **игнорировать** конкретные диски или сетевые адаптеры.
+    *   *По умолчанию:* `config.yaml` (программа ищет этот файл в папке установки).
+    *   *Что делать:* Если у вас нет заготовленного `config.yaml`, просто оставьте поле как есть. Экспортер запустится с дефолтными настройками.
 
 ---
 
-## 2. Настройка Firewall
+## 2. Как это работает после установки
 
-Необходимо открыть порт **9182** для входящих подключений от сервера Prometheus.
+*   **Фоновая служба:** Установщик создает системную **службу Windows** (`windows_exporter`) с типом запуска "Автоматически". 
+*   **Важно:** Её **не будет** в списке "Автозагрузка" в Диспетчере задач, так как она работает на уровне системы.
+*   **Порт:** По умолчанию используется TCP-порт **9182**.
+*   **Проверка:** Откройте браузер по адресу `http://localhost:9182/metrics`
+
+---
+
+## 3. Настройка Firewall (Важно)
+
+Чтобы Prometheus смог забрать данные, нужно разрешить входящие подключения на порт 9182:
 
 ```powershell
+# Запустите PowerShell от имени Администратора
 New-NetFirewallRule -DisplayName "Prometheus windows_exporter" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 9182
 ```
 
 ---
 
-## 3. Проверка
-
-1. Откройте в браузере: `http://<IP-адрес-windows-хоста>:9182/metrics`
-2. Вы должны увидеть список метрик (например, `windows_cpu_time_total`).
-
----
-
 ## 4. Добавление в Prometheus
 
-Добавьте новую job в `prometheus.yml` на сервере мониторинга:
+Добавьте цель в ваш `prometheus.yml`:
 
 ```yaml
-scrape_configs:
-  - job_name: 'windows-node'
+  - job_name: 'windows'
     static_configs:
-      - targets: ['<IP-адрес-windows-хоста>:9182']
-        labels:
-          os: 'windows'
-          env: 'production'
+      - targets: ['<IP_WINDOWS_МАШИНЫ>:9182']
 ```
-
-Перезагрузите конфигурацию Prometheus: `curl -X POST http://localhost:9090/-/reload` или перезапустите контейнер.
