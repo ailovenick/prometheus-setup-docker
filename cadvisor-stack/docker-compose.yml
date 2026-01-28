@@ -1,7 +1,13 @@
 services:
   # cAdvisor (Container Advisor)
   # Собирает метрики потребления ресурсов (CPU, RAM, Network) по каждому контейнеру отдельно.
-  # Если Node Exporter видит сервер целиком, то cAdvisor видит "вклад" каждого контейнера.
+  #
+  # [ПОЧЕМУ НЕЛЬЗЯ ОСТАВИТЬ ТОЛЬКО ЕГО?]
+  # cAdvisor показывает, СКОЛЬКО ресурсов потребляют процессы (CPU Usage).
+  # Но он НЕ ВИДИТ состояние "здоровья" самого сервера:
+  # 1. Не знает свободного места на диске (Disk Space Available) - это делает Node Exporter.
+  # 2. Не показывает Load Average системы.
+  # Поэтому для полноценного мониторинга нужны ОБА: Node Exporter (Хост) + cAdvisor (Контейнеры).
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
@@ -17,5 +23,12 @@ services:
     privileged: true
     devices:
       - /dev/kmsg
+    command:
+      # [OPTIMIZATION] Ограничиваем область видимости только Docker-контейнерами.
+      - '--docker_only=true'
+      # [OPTIMIZATION] Увеличиваем интервал опроса до 10 секунд (вместо 1с по умолчанию).
+      - '--housekeeping_interval=10s'
+      # [OPTIMIZATION] Отключаем тяжелые метрики (disk usage, per-cpu stats, network sockets).
+      - '--disable_metrics=disk,tcp,udp,percpu,sched,process'
     # Использует порт 8080. Конфликтует с Nginx, если тот тоже на 8080!
     network_mode: "host"
