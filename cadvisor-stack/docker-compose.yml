@@ -1,0 +1,21 @@
+services:
+  # cAdvisor (Container Advisor)
+  # Собирает метрики потребления ресурсов (CPU, RAM, Network) по каждому контейнеру отдельно.
+  # Если Node Exporter видит сервер целиком, то cAdvisor видит "вклад" каждого контейнера.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    # ВАЖНО: Для доступа к статистике ядра и Docker-сокетам
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    # Включаем привилегированный режим для доступа к железу (нужен не всегда, но часто помогает на Linux)
+    privileged: true
+    devices:
+      - /dev/kmsg
+    # Использует порт 8080. Конфликтует с Nginx, если тот тоже на 8080!
+    network_mode: "host"
