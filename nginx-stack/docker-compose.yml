@@ -9,8 +9,8 @@ services:
       # Прокидываем наш конфиг с разрешенным /stub_status.
       - ./config/default.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
-      # Проброс: заходим на http://localhost:8080 - попадаем в Nginx на порт 80.
-      - "8080:80"
+      # Проброс: заходим на http://localhost:8081 - попадаем в Nginx на порт 80.
+      - "8081:80"
 
   # [TRANSLATOR] Контейнер-экспортер.
   # Это "переводчик". Он берет текст из http://nginx/stub_status, 
