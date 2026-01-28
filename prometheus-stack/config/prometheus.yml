@@ -24,10 +24,11 @@ scrape_configs:
           instance: 'monitoring-server'
           os: 'linux'
 
-      - targets: ['remoteip:9100']
-        labels:
-          instance: 'vps'
-          os: 'linux'  
+      # Пример мониторинга удаленного сервера:
+      # - targets: ['remoteip:9100']
+      #   labels:
+      #     instance: 'vps'
+      #     os: 'linux'  
 
   - job_name: 'cadvisor'
     static_configs:
@@ -36,16 +37,17 @@ scrape_configs:
           instance: 'monitoring-server'
           type: 'container-stats'
 
-  - job_name: 'windows-nodes'
-    static_configs:
-      - targets: ['192.168.1.10:9182']
-        labels:
-          instance: 'win-1'
-          os: 'windows'
-      - targets: ['192.168.1.11:9182']
-        labels:
-          instance: 'win-2'
-          os: 'windows'
+  # Пример мониторинга Windows-серверов (требует установки windows_exporter):
+  # - job_name: 'windows-nodes'
+  #   static_configs:
+  #     - targets: ['192.168.1.10:9182']
+  #       labels:
+  #         instance: 'win-1'
+  #         os: 'windows'
+  #     - targets: ['192.168.1.11:9182']
+  #       labels:
+  #         instance: 'win-2'
+  #         os: 'windows'
 
   # === 2. СЕРВИСЫ (БАЗЫ ДАННЫХ И ПРОКСИ) ===
 
