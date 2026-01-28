@@ -78,3 +78,4 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     network_mode: "host"
     pid: "host"
+

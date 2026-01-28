@@ -29,6 +29,13 @@ scrape_configs:
           instance: 'vps'
           os: 'linux'  
 
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['localhost:8080']
+        labels:
+          instance: 'monitoring-server'
+          type: 'container-stats'
+
   - job_name: 'windows-nodes'
     static_configs:
       - targets: ['192.168.1.10:9182']
