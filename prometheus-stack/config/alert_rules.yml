@@ -1,37 +1,41 @@
+# Группы правил (логическое разделение)
 groups:
-  - name: health_checks
+  - name: health_checks # Проверка "живой или мертвый"
     rules:
-      # 1. Проверка доступности инстансов (любой таргет из prometheus.yml)
+      # [ALERT] Если сервис упал
       - alert: InstanceDown
+        # 'up' - встроенная метрика Prometheus. 1 = ок, 0 = не отвечает.
         expr: up == 0
+        # Ждем 1 минуту перед тем как бить тревогу (защита от миганий сети)
         for: 1m
         labels:
-          severity: critical
+          severity: critical # Уровень важности: Критический
         annotations:
           summary: "Сервис {{ $labels.instance }} упал"
-          description: "Инстанс {{ $labels.instance }} джоба {{ $labels.job }} недоступен больше 1 минуты."
+          description: "Инстанс {{ $labels.instance }} (тип {{ $labels.os }}) недоступен больше 1 минуты."
 
-  - name: host_metrics
+  - name: host_metrics # Метрики железа (Linux/Windows)
     rules:
-      # 2. Нехватка места на диске (менее 10% свободно)
+      # [ALERT] Заканчивается место на диске
       - alert: HostOutOfDiskSpace
-        # Фильтруем корень, исключаем виртуальные ФС
+        # Формула: (Свободно * 100) / Всего < 10%.
+        # Метка {mountpoint="/rootfs"} специфична для нашего Node Exporter в Docker.
         expr: (node_filesystem_avail_bytes{mountpoint="/rootfs"} * 100) / node_filesystem_size_bytes{mountpoint="/rootfs"} < 10
         for: 5m
         labels:
-          severity: warning
+          severity: warning # Уровень важности: Предупреждение
         annotations:
           summary: "Мало места на диске на {{ $labels.instance }}"
-          description: "На диске (раздел {{ $labels.mountpoint }}) осталось менее 10% свободного места."
+          description: "На диске осталось менее 10% свободного места. Пора чистить логи!"
 
-  - name: service_specific
+  - name: service_specific # Специфичные проверки для софта
     rules:
-      # 3. Nginx не отвечает (через экспортер)
+      # [ALERT] Ошибка в работе Nginx
       - alert: NginxDown
         expr: nginx_up == 0
         for: 30s
         labels:
           severity: critical
         annotations:
-          summary: "Nginx упал"
-          description: "Nginx на {{ $labels.instance }} перестал отдавать метрики stub_status."
+          summary: "Веб-сервер Nginx упал"
+          description: "Nginx на {{ $labels.instance }} перестал отвечать."

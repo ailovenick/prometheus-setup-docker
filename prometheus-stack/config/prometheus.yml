@@ -1,38 +1,46 @@
 global:
-  # Частота сбора метрик (рекомендуемое значение 15-30с)
-  scrape_interval: 15s
-  # Частота проверки правил алертов (время реакции на сбой)
-  evaluation_interval: 15s
+  scrape_interval: 15s     # Интервал сбора метрик
+  evaluation_interval: 15s # Интервал проверки правил алертов
 
-# [ALERTS] Подключение Alertmanager
 alerting:
   alertmanagers:
   - static_configs:
-    - targets:
-      # При использовании network_mode: host обращение происходит напрямую по порту
-      - localhost:9093
+    - targets: ['localhost:9093']
 
-# [RULES] Файлы с правилами мониторинга (условия отправки алертов)
 rule_files:
   - "alert_rules.yml"
 
 scrape_configs:
-  # [SELF-MONITORING] Мониторинг самого экземпляра Prometheus
+  # === 1. ИНФРАСТРУКТУРА (СЕРВЕРЫ И ЯДРО МОНИТОРИНГА) ===
+
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
-  # [HOST MONITORING] Основной хост (метрики оборудования: CPU, RAM, Disk)
-  - job_name: 'node'
+  - job_name: 'linux-node'
     static_configs:
       - targets: ['localhost:9100']
         labels:
-          instance: 'primary-host'
-          location: 'main-dc'
+          instance: 'monitoring-server'
+          os: 'linux'
 
-  # [SERVICES MONITORING]
-  # Важно: При запуске экспортеров в контейнерах с network_mode: host или пробросом портов,
-  # они доступны для Prometheus по адресу localhost.
+      - targets: ['remoteip:9100']
+        labels:
+          instance: 'vps'
+          os: 'linux'  
+
+  - job_name: 'windows-nodes'
+    static_configs:
+      - targets: ['192.168.1.10:9182']
+        labels:
+          instance: 'win-1'
+          os: 'windows'
+      - targets: ['192.168.1.11:9182']
+        labels:
+          instance: 'win-2'
+          os: 'windows'
+
+  # === 2. СЕРВИСЫ (БАЗЫ ДАННЫХ И ПРОКСИ) ===
 
   - job_name: 'nginx'
     static_configs:
@@ -42,8 +50,8 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9187']
 
-  # [APP MONITORING] Наше Python приложение
-  # Доступно по localhost, так как проброшено на порт 8000 хоста
-  - job_name: 'app'
+  # === 3. ПРИЛОЖЕНИЯ (БИЗНЕС-ЛОГИКА) ===
+
+  - job_name: 'python-app'
     static_configs:
       - targets: ['localhost:8000']

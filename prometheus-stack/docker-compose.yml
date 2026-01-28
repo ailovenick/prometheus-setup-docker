@@ -1,36 +1,44 @@
 services:
   prometheus:
-    # Port: 9090
     image: prom/prometheus:latest
     container_name: prometheus
     restart: unless-stopped
     volumes:
-      # [CONFIG] Главный конфигурационный файл: цели для опроса (targets) и интервалы.
+      # [CONFIG] Передаем файл настроек (кого опрашивать, как часто).
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
-      # [PERSISTENCE] ВАЖНО: Хранилище метрик (TSDB). 
-      # Без этого volume при перезапуске контейнера история метрик будет утрачена.
-      # Примечание: На Linux права на ./data должны принадлежать UID 65534 (пользователь 'nobody').
-      # Команда: sudo chown -R 65534:65534 ./data
+      
+      # [PERSISTENCE] Хранилище временных рядов (TSDB).
+      # Здесь лежат все твои графики за прошлые дни/месяцы.
+      # ПРИМЕЧАНИЕ ПО ПРАВАМ (Permissions):
+      # 1. Если используешь путь (./data) - это Bind Mount. Нужно вручную дать права
+      #    пользователю внутри контейнера: `sudo chown -R 65534:65534 ./data`.
+      # 2. Если использовать ИМЕНОВАННЫЙ ТОМ (например, prometheus_data:/prometheus),
+      #    то Docker сам выставит нужные права, но файлы будут скрыты в недрах Docker.
       - ./data:/prometheus
 
     command:
+      # Указываем путь к конфигу внутри контейнера.
       - '--config.file=/etc/prometheus/prometheus.yml'
-      # Указание пути для хранения данных (TSDB)
+      # Указываем, где хранить базу данных (совпадает с путем в volumes выше).
       - '--storage.tsdb.path=/prometheus'
-      # [LEGACY] Встроенные шаблоны дашбордов Prometheus (обычно не используются при наличии Grafana)
+      # Папки для служебных шаблонов (нужны для работы веб-интерфейса).
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+    
+    # Режим "host" для упрощения: Prometheus видит всех соседей на localhost.
     network_mode: "host"
 
   alertmanager:
-    # Port: 9093
     image: prom/alertmanager:latest
     container_name: alertmanager
     restart: unless-stopped
     volumes:
+      # Конфиг: куда слать уведомления (Telegram, Email и т.д.).
       - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-      # [PERSISTENCE] Хранилище текущих Silences (заглушки алертов).
-      # Необходимо для сохранения состояния заглушенных алертов после перезапуска.
+      # Хранилище состояний: заглушенные алерты (Silences).
+      # ПРИМЕЧАНИЕ ПО ПРАВАМ:
+      # Требует прав пользователя 'nobody' (UID 65534), как и Prometheus.
+      # `sudo chown -R 65534:65534 ./alertmanager_data`
       - ./alertmanager_data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
@@ -38,46 +46,35 @@ services:
     network_mode: "host"
 
   grafana:
-    # Port: 3000
     image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
     volumes:
-      # [PERSISTENCE] База данных Grafana (SQLite).
-      # Содержит пользователей, дашборды, настройки источников данных.
-      # При потере volume требуется повторная настройка окружения.
-      # Примечание: На Linux права на ./grafana_data должны принадлежать UID 472 (пользователь 'grafana').
-      # Команда: sudo chown -R 472:472 ./grafana_data
+      # Здесь хранятся созданные тобой дашборды и настройки пользователей.
+      # База данных SQLite (grafana.db) лежит именно тут.
+      # ПРИМЕЧАНИЕ ПО ПРАВАМ:
+      # Для Bind Mount (./grafana_data) нужно отдать папку пользователю Grafana:
+      # `sudo chown -R 472:472 ./grafana_data`
       - ./grafana_data:/var/lib/grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
+      # Настройки "из коробки" через переменные окружения.
+      - GF_SECURITY_ADMIN_USER=admin     # Логин администратора
+      - GF_SECURITY_ADMIN_PASSWORD=admin # Пароль администратора
+      - GF_USERS_ALLOW_SIGN_UP=false     # Запрет регистрации новых пользователей
     network_mode: "host"
 
+  # Локальный агент для самого сервера мониторинга (чтобы мониторить мониторинг) подробные комментарии в node-exporter.
   node-exporter:
-    # Port: 9100
     image: prom/node-exporter:latest
     container_name: prometheus_node_exporter
     restart: unless-stopped
     volumes:
-      # [HOST INTROSPECTION] Настройка доступа к мониторингу хоста из контейнера.
-      # ВАЖНО: /proc и /sys — виртуальные ФС ядра, а не обычные директории.
-      # Проброс только корня (/) недостаточен, так как монтирования не рекурсивны,
-      # и внутри /rootfs/proc будет пусто. Требуется явное монтирование.
-      - /proc:/host/proc:ro # Интерфейс ядра к процессам хоста
-      - /sys:/host/sys:ro   # Интерфейс ядра к оборудованию (CPU, диски, сеть)
-      - /:/rootfs:ro        # Реальная файловая система (используется для метрик диска)
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
     command:
-      # Настройка чтения метрик не из контейнерного /proc,
-      # а из примонтированного /host/proc (хостового).
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     network_mode: "host"
-    # [CONTEXT] Необходимость параметра при проброшенном /proc:
-    # Проброс файлов (/proc) предоставляет ТОЛЬКО чтение информации.
-    # pid: "host" позволяет выполнять СИСТЕМНЫЕ ВЫЗОВЫ к процессам хоста.
-    # Без этого экспортер видит процессы в файлах, но при попытке обращения к ним
-    # (например, для проверки лимитов) получит ошибку "No such process" из-за изоляции PID Namespace.
     pid: "host"

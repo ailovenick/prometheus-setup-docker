@@ -1,33 +1,47 @@
+# Глобальные настройки
 global:
+  # Время, через которое алерт считается решенным (RESOLVED), 
+  # если от Prometheus перестали приходить данные о нем.
   resolve_timeout: 5m
 
+# [ROUTING] Логика распределения алертов
 route:
-  # [DEDUPLICATION] Группировка алертов
-  # Алерты с одинаковым названием (alertname) объединяются в одно сообщение.
+  # Группировка: алерты с одинаковыми именами объединяются в одно сообщение.
+  # Например, если упадет 10 сервисов, тебе придет не 10 сообщений, а 1 со списком.
   group_by: ['alertname']
   
-  # [DELAY] Время ожидания перед отправкой ПЕРВОГО алерта в группе (для сбора дополнительной информации)
+  # Групповое ожидание: сколько ждать новых алертов перед отправкой первого сообщения (сбор "пачки").
   group_wait: 10s
   
-  # [THROTTLING] Время ожидания перед отправкой обновления при поступлении НОВЫХ алертов в ту же группу.
+  # Интервал группы: как часто слать обновления, если в текущей группе появились новые алерты.
   group_interval: 10s
   
-  # [REMINDER] Интервал повторного уведомления, если проблема не решена.
+  # Повтор: через какое время отправить уведомление снова, если проблема НЕ исправлена.
+  # Рекомендуется ставить от 3h до 24h, чтобы не "спамить".
   repeat_interval: 1h
   
-  # Получатель по умолчанию
-  receiver: 'default-receiver'
+  # Кому слать по умолчанию
+  receiver: 'blackhole'
 
+# [RECEIVERS] Получатели уведомлений
 receivers:
-- name: 'default-receiver'
-  # Настройка интеграций: Email, Slack, Telegram, Webhook и т.д.
-  
-  # Пример для Telegram:
-  # telegram_configs:
-  # - bot_token: '123456789:your-bot-token'
-  #   chat_id: -100123456789
-  #   parse_mode: 'HTML'
+  # 1. Приемник "Черная дыра" (заглушка). Никуда не шлет, просто гасит алерты.
+  - name: 'blackhole'
 
-  # Пример для Webhook (для интеграции с внешними скриптами):
-  # webhook_configs:
-  # - url: 'http://127.0.0.1:5001/alert'
+  # 2. Пример настройки Telegram
+  - name: 'telegram-alerts'
+    telegram_configs:
+      - bot_token: 'ВАШ_ТОКЕН_БОТА' # Получается у @BotFather
+        chat_id: 123456789         # Твой ID или ID группы (узнать у @userinfobot)
+        parse_mode: 'HTML'
+        # Сообщение, которое придет в телеграм:
+        message: '<b>{{ .Status | toUpper }}</b>: {{ .CommonAnnotations.summary }}\n{{ .CommonAnnotations.description }}'
+
+  # 3. Пример настройки Email
+  - name: 'email-alerts'
+    email_configs:
+      - to: 'admin@example.com'
+        from: 'monitoring@example.com'
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: 'user@example.com'
+        auth_password: 'password'
