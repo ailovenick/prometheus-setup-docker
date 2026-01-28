@@ -103,7 +103,6 @@ sudo chown -R 472:472 prometheus-stack/grafana_data
 # Для Postgres (UID 999 - 'postgres')
 sudo chown -R 999:999 postgres-stack/data
 ```
-*На Windows (Docker Desktop) это происходит автоматически, действий не требуется.*
 
 ### 2. Сеть (Network Mode)
 *   **`network_mode: "host"`**: Использован для `node-exporter` и стека мониторинга. Контейнеры используют сетевой интерфейс хоста напрямую. Это упрощает доступ к "железу" и взаимодействие компонентов на одном сервере.
