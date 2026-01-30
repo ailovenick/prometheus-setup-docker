@@ -25,10 +25,6 @@ include:
   - path:
       - nginx-stack/docker-compose.yml
 
-  # 5. Агент мониторинга хоста (Node Exporter)
-  - path:
-      - node-exporter/docker-compose.yml
-
-  # 6. Агент мониторинга контейнеров (cAdvisor)
+  # 5. Агент мониторинга контейнеров (cAdvisor)
   - path:
       - cadvisor-stack/docker-compose.yml
