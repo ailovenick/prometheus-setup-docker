@@ -1,67 +1,44 @@
 global:
   scrape_interval: 15s     # Интервал сбора метрик
   evaluation_interval: 15s # Интервал проверки правил алертов
-  scrape_timeout: 10s      # Время попытки скрапинга
 
 alerting:
   alertmanagers:
   - static_configs:
-    - targets: ['localhost:9093']
+    - targets: ['localhost:9093'] # Адрес Alertmanager
 
 rule_files:
-  - "alert_rules.yml"
+  - "alert_rules.yml" # Файл правил алертов
 
 scrape_configs:
-  # === 1. ИНФРАСТРУКТУРА (СЕРВЕРЫ И ЯДРО МОНИТОРИНГА) ===
+  # --- ИНФРАСТРУКТУРА (ХОСТЫ) ---
 
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['localhost:9090'] # Метрики сервера Prometheus
 
-  - job_name: 'linux-node'
+  - job_name: 'node-exporter'
     static_configs:
-      - targets: ['localhost:9100']
-        labels:
-          instance: 'monitoring-server'
-          os: 'linux'
-
-      # Пример мониторинга удаленного сервера:
-      # - targets: ['remoteip:9100']
-      #   labels:
-      #     instance: 'vps'
-      #     os: 'linux'  
-
+      - targets: ['localhost:9100'] # Метрики ОС Linux (CPU, Disk, Mem)
+      
   - job_name: 'cadvisor'
     static_configs:
-      - targets: ['localhost:8080']
-        labels:
-          instance: 'monitoring-server'
-          type: 'container-stats'
+      - targets: ['localhost:8080'] # Метрики Docker-контейнеров
 
-  # Пример мониторинга Windows-серверов (требует установки windows_exporter):
-  # - job_name: 'windows-nodes'
-  #   static_configs:
-  #     - targets: ['192.168.1.10:9182']
-  #       labels:
-  #         instance: 'win-1'
-  #         os: 'windows'
-  #     - targets: ['192.168.1.11:9182']
-  #       labels:
-  #         instance: 'win-2'
-  #         os: 'windows'
+  - job_name: 'windows-exporter'
+    static_configs:
+       - targets: ['192.168.1.183:9182', '192.168.1.184:9182'] # Метрики ОС Windows
 
-  # === 2. СЕРВИСЫ (БАЗЫ ДАННЫХ И ПРОКСИ) ===
+  # --- СЕРВИСЫ (БАЗЫ И ПРОКСИ) ---
 
   - job_name: 'nginx'
     static_configs:
-      - targets: ['localhost:9113'] 
+      - targets: ['localhost:9113'] # Метрики веб-сервера Nginx
 
   - job_name: 'postgres'
     static_configs:
-      - targets: ['localhost:9187']
-
-  # === 3. ПРИЛОЖЕНИЯ (БИЗНЕС-ЛОГИКА) ===
+      - targets: ['localhost:9187'] # Метрики базы данных PostgreSQL
 
   - job_name: 'python-app'
     static_configs:
-      - targets: ['localhost:8000']
+      - targets: ['localhost:8000'] # Метрики Python-приложения (FastAPI)
