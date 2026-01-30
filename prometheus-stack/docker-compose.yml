@@ -6,6 +6,8 @@ services:
     volumes:
       # [CONFIG] Передаем файл настроек (кого опрашивать, как часто).
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      # [RULES] Передаем файл с правилами алертов.
+      - ./config/alert_rules.yml:/etc/prometheus/alert_rules.yml
       
       # [PERSISTENCE] Хранилище временных рядов (TSDB).
       # Здесь лежат все твои графики за прошлые дни/месяцы.
