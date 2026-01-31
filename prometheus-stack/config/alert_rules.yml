@@ -24,7 +24,7 @@ groups:
       # Метод: Группировка через 'by (instance)'.
       # Логика: Расчет среднего значения изолированно для каждого сервера.
       # Результат: Сохранение ТОЛЬКО меток instance и job. Удаление остальных метаданных.
-      - alert: HostHighCpuLoad
+      - alert: LinuxHostHighCpuLoad
         expr: 100 - avg by (instance, job) (rate(node_cpu_seconds_total{job="node-exporter", mode="idle"}[5m])) * 100 > 80
         for: 1m
         labels:
@@ -50,7 +50,7 @@ groups:
       # ------------------------------------------------------------------------
 
       # === [WINDOWS] ВАРИАНТ 1: ПРОСТОЙ ===
-      - alert: WinHostHighCpuLoad
+      - alert: WindowsHostHighCpuLoad
         expr: 100 - avg by (instance, job) (rate(windows_cpu_time_total{job="windows-exporter", mode="idle"}[5m])) * 100 > 80
         for: 1m
         labels:
