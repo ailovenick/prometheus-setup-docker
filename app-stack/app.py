@@ -1,98 +1,98 @@
 #!/usr/bin/env python3
 
-# [IMPORT] Импортируем модуль 'random' из стандартной библиотеки.
-# Нужен для генерации случайных чисел (симуляция нагрузки).
+# [IMPORT] Импорт модуля 'random' из стандартной библиотеки.
+# Генерация случайных чисел (симуляция нагрузки).
 import random
 
-# [IMPORT] Импортируем модуль 'threading' из стандартной библиотеки.
-# Нужен для создания параллельных потоков (чтобы симуляция не блокировала веб-сервер).
+# [IMPORT] Импорт модуля 'threading' из стандартной библиотеки.
+# Создание параллельных потоков (предотвращение блокировки веб-сервера симуляцией).
 import threading
 
-# [IMPORT] Импортируем модуль 'time' из стандартной библиотеки.
-# Нужен для пауз (sleep) в цикле симуляции.
+# [IMPORT] Импорт модуля 'time' из стандартной библиотеки.
+# Организация пауз (sleep) в цикле симуляции.
 import time
 
-# [IMPORT] Импортируем класс 'FastAPI' из внешней библиотеки 'fastapi'.
-# Это основной класс для создания веб-приложения.
+# [IMPORT] Импорт класса 'FastAPI' из внешней библиотеки 'fastapi'.
+# Основной класс для создания веб-приложения.
 from fastapi import FastAPI
 
-# [IMPORT] Импортируем классы 'Counter', 'Gauge' и функцию 'make_asgi_app' из внешней библиотеки 'prometheus_client'.
+# [IMPORT] Импорт классов 'Counter', 'Gauge' и функции 'make_asgi_app' из внешней библиотеки 'prometheus_client'.
 # Counter - для счетчиков (только вверх), Gauge - для измерителей (вверх/вниз).
-# make_asgi_app - создает специальное мини-приложение для отдаче метрик.
+# make_asgi_app - создание специального мини-приложения для отдачи метрик.
 from prometheus_client import Counter, Gauge, make_asgi_app
 
-# [INSTANCE] Создаем экземпляр класса FastAPI.
-# Переменная 'app' становится главным объектом нашего приложения, к которому мы будем всё подключать.
+# [INSTANCE] Создание экземпляра класса FastAPI.
+# Инициализация главного объекта приложения 'app' для подключения компонентов.
 app = FastAPI()
 
-# [FUNCTION CALL] Создаем отдельное ASGI-приложение для метрик, вызывая функцию make_asgi_app().
-# Оно умеет отвечать на запросы в формате, понятном Prometheus.
+# [FUNCTION CALL] Создание отдельного ASGI-приложения для метрик вызовом make_asgi_app().
+# Обработка запросов в формате Prometheus.
 metrics_app = make_asgi_app()
 
-# [METHOD CALL] Монтируем (подключаем) приложение metrics_app к нашему главному приложению 'app'.
-# Теперь по адресу /metrics будет отвечать код из библиотеки prometheus_client.
+# [METHOD CALL] Монтирование (подключение) приложения metrics_app к главному приложению 'app'.
+# Обеспечение ответа кода библиотеки prometheus_client по адресу /metrics.
 app.mount("/metrics", metrics_app)
 
-# [INSTANCE] Создаем экземпляр класса Counter.
-# Это глобальная переменная, хранящая состояние счетчика запросов.
+# [INSTANCE] Создание экземпляра класса Counter.
+# Глобальная переменная для хранения состояния счетчика запросов.
 HTTP_REQUESTS_TOTAL = Counter(
     "app_http_requests_total",      # Имя метрики: уникальный идентификатор в системе Prometheus
     "Total number of HTTP requests", # Описание: краткое пояснение назначения метрики (Help text)
     ["method", "endpoint"]          # Метки (Labels): список измерений для группировки и фильтрации данных
 )
 
-# [INSTANCE] Создаем экземпляр класса Gauge.
-# Это глобальная переменная, хранящая текущее значение "использованной памяти".
+# [INSTANCE] Создание экземпляра класса Gauge.
+# Глобальная переменная для хранения текущего значения "использованной памяти".
 MEMORY_USAGE_BYTES = Gauge(
     "app_memory_usage_bytes",        # Имя метрики: под этим именем данные будут в Prometheus
     "Current memory usage in Bytes (Simulated)" # Описание: пояснение, что измеряет данный Gauge
 )
 
-# [FUNCTION DEFINITION] Объявляем функцию simulate_system_load.
-# Она будет выполняться бесконечно в фоне.
+# [FUNCTION DEFINITION] Объявление функции simulate_system_load.
+# Бесконечное выполнение в фоне.
 def simulate_system_load():
     """Функция симуляции нагрузки для демонстрации работы Gauge."""
-    # [LOOP] Запускаем бесконечный цикл.
+    # [LOOP] Запуск бесконечного цикла.
     while True:
-        # [FUNCTION CALL] Генерируем случайное число от 128 до 1024.
+        # [FUNCTION CALL] Генерация случайного числа от 128 до 1024.
         random_mb = random.uniform(128, 1024)
         
-        # [CALCULATION] Переводим мегабайты в байты (умножаем на 1024 дважды).
+        # [CALCULATION] Перевод мегабайт в байты (двойное умножение на 1024).
         val_bytes = random_mb * 1024 * 1024
         
-        # [METHOD CALL] Вызываем метод .set() у объекта Gauge (MEMORY_USAGE_BYTES).
-        # Это обновляет значение метрики на вычисленное число байт.
+        # [METHOD CALL] Вызов метода .set() у объекта Gauge (MEMORY_USAGE_BYTES).
+        # Обновление значения метрики на вычисленное число байт.
         MEMORY_USAGE_BYTES.set(val_bytes)
         
-        # [FUNCTION CALL] Приостанавливаем выполнение этого потока на 5 секунд.
+        # [FUNCTION CALL] Приостановка выполнения потока на 5 секунд.
         time.sleep(5)
 
-# [INSTANCE & METHOD CALL] Создаем и запускаем поток.
-# threading.Thread() создает объект потока, которому мы передаем нашу функцию simulate_system_load.
-# daemon=True означает, что поток закроется сам, если основная программа остановится.
-# .start() запускает выполнение потока.
+# [INSTANCE & METHOD CALL] Создание и запуск потока.
+# threading.Thread() - создание объекта потока с передачей функции simulate_system_load.
+# daemon=True - автоматическое закрытие потока при остановке основной программы.
+# .start() - запуск выполнения потока.
 threading.Thread(target=simulate_system_load, daemon=True).start()
 
-# [DECORATOR] Используем декоратор @app.get("/hello").
-# Он говорит FastAPI: "когда придет GET-запрос на адрес /hello, выполни функцию ниже".
+# [DECORATOR] Использование декоратора @app.get("/hello").
+# Указание FastAPI выполнить функцию ниже при поступлении GET-запроса на /hello.
 @app.get("/hello")
-# [FUNCTION DEFINITION] Объявляем функцию обработки запроса hello.
+# [FUNCTION DEFINITION] Объявление функции обработки запроса hello.
 def hello():
-    # [METHOD CALL] Обращаемся к объекту счетчика HTTP_REQUESTS_TOTAL.
-    # .labels() выбирает конкретный счетчик для указанных параметров (GET, /hello).
-    # .inc() увеличивает значение этого счетчика на 1.
+    # [METHOD CALL] Обращение к объекту счетчика HTTP_REQUESTS_TOTAL.
+    # .labels() - выбор конкретного счетчика для параметров (GET, /hello).
+    # .inc() - увеличение значения счетчика на 1.
     HTTP_REQUESTS_TOTAL.labels(method="GET", endpoint="/hello").inc()
     
-    # [RETURN] Возвращаем словарь, который FastAPI автоматически превратит в JSON-ответ.
+    # [RETURN] Возврат словаря для автоматического преобразования в JSON-ответ средствами FastAPI.
     return {"message": "Hello, Prometheus!"}
 
-# [DECORATOR] Регистрируем обработчик для пути /info.
+# [DECORATOR] Регистрация обработчика для пути /info.
 @app.get("/info")
-# [FUNCTION DEFINITION] Объявляем функцию обработки запроса info.
+# [FUNCTION DEFINITION] Объявление функции обработки запроса info.
 def info():
-    # [METHOD CALL] Увеличиваем счетчик, но уже с меткой endpoint="/info".
-    # В Prometheus это будет выглядеть как отдельная временная шкала.
+    # [METHOD CALL] Увеличение счетчика с меткой endpoint="/info".
+    # Отображение в Prometheus как отдельной временной шкалы.
     HTTP_REQUESTS_TOTAL.labels(method="GET", endpoint="/info").inc()
     
-    # [RETURN] Возвращаем JSON-ответ.
+    # [RETURN] Возврат JSON-ответа.
     return {"message": "App is running and simulating metrics"}

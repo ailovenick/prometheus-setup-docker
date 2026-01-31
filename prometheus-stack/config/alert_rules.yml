@@ -6,14 +6,14 @@ groups:
   - name: availability
     rules:
       - alert: InstanceDown
-        # Метрика 'up'. 1 = ОК, 0 = ОШИБКА.
+        # Метрика 'up'. Значения: 1 = ОК, 0 = ОШИБКА.
         expr: up == 0
         for: 1m
         labels:
           severity: critical
         annotations:
           summary: "Сервис {{ $labels.job }} не отвечает"
-          description: "Инстанс {{ $labels.instance }} (job: {{ $labels.job }}) недоступен более 1 минуты."
+          description: "Недоступность инстанса {{ $labels.instance }} (job: {{ $labels.job }}) более 1 минуты."
 
   # ----------------------------------------------------------------------------
   # УРОВЕНЬ 2: РЕСУРСЫ (CPU)
@@ -21,9 +21,9 @@ groups:
   - name: host_resources
     rules:
       # === [LINUX] ВАРИАНТ 1: ПРОСТОЙ (BASIC) ===
-      # Группировка через 'by (instance)'.
-      # Логика: Расчет среднего значения изолированно для каждого сервера (не одно число на всех).
-      # Результат: Сохранение ТОЛЬКО лейблов instance и job. Удаление остальных метаданных.
+      # Метод: Группировка через 'by (instance)'.
+      # Логика: Расчет среднего значения изолированно для каждого сервера.
+      # Результат: Сохранение ТОЛЬКО меток instance и job. Удаление остальных метаданных.
       - alert: HostHighCpuLoad
         expr: 100 - avg by (instance, job) (rate(node_cpu_seconds_total{job="node-exporter", mode="idle"}[5m])) * 100 > 80
         for: 1m
@@ -31,11 +31,11 @@ groups:
           severity: warning
         annotations:
           summary: "Высокая нагрузка CPU (Linux)"
-          description: "На сервере {{ $labels.instance }} загрузка процессора > 80%."
+          description: "Загрузка процессора на сервере {{ $labels.instance }} > 80%."
 
       # === [LINUX] ВАРИАНТ 2: ПРОДВИНУТЫЙ (PRO) ===
-      # Группировка через 'without'.
-      # Результат: Сохранение ВСЕХ пользовательских лейблов (env, team, region). 
+      # Метод: Группировка через 'without'.
+      # Результат: Сохранение ВСЕХ пользовательских меток (env, team, region). 
       # Числовой результат идентичен варианту 1.
       #
       # - alert: HostHighCpuLoad_Pro
@@ -45,7 +45,7 @@ groups:
       #     severity: warning
       #   annotations:
       #     summary: "CPU Load: {{ $labels.instance }}"
-      #     description: "Сервер {{ $labels.instance }} перегружен."
+      #     description: "Перегрузка сервера {{ $labels.instance }}."
 
       # ------------------------------------------------------------------------
 
@@ -57,10 +57,10 @@ groups:
           severity: warning
         annotations:
           summary: "Высокая нагрузка CPU (Windows)"
-          description: "На сервере {{ $labels.instance }} загрузка процессора > 80%."
+          description: "Загрузка процессора на сервере {{ $labels.instance }} > 80%."
 
       # === [WINDOWS] ВАРИАНТ 2: ПРОДВИНУТЫЙ ===
-      # Учет специфики имен лейблов в Windows Exporter.
+      # Учет специфики имен меток в Windows Exporter.
       #
       # - alert: WinHostHighCpuLoad_Pro
       #   expr: 100 - avg without (core, mode) (rate(windows_cpu_time_total{job="windows-exporter", mode="idle"}[5m])) * 100 > 80
@@ -69,4 +69,4 @@ groups:
       #     severity: warning
       #   annotations:
       #     summary: "CPU Load (Win): {{ $labels.instance }}"
-      #     description: "Сервер {{ $labels.instance }} перегружен."
+      #     description: "Перегрузка сервера {{ $labels.instance }}."

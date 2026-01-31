@@ -4,30 +4,31 @@ services:
     container_name: prometheus
     restart: unless-stopped
     volumes:
-      # [CONFIG] Передаем файл настроек (кого опрашивать, как часто).
+      # [CONFIG] Передача основного файла конфигурации.
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
-      # [RULES] Передаем файл с правилами алертов.
+      # [RULES] Передача файла правил алертинга.
       - ./config/alert_rules.yml:/etc/prometheus/alert_rules.yml
       
       # [PERSISTENCE] Хранилище временных рядов (TSDB).
-      # Здесь лежат все твои графики за прошлые дни/месяцы.
+      # Назначение: сохранение исторических данных (графики за прошлые периоды).
       # ПРИМЕЧАНИЕ ПО ПРАВАМ (Permissions):
-      # 1. Если используешь путь (./data) - это Bind Mount. Нужно вручную дать права
-      #    пользователю внутри контейнера: `sudo chown -R 65534:65534 ./data`.
-      # 2. Если использовать ИМЕНОВАННЫЙ ТОМ (например, prometheus_data:/prometheus),
-      #    то Docker сам выставит нужные права, но файлы будут скрыты в недрах Docker.
+      # 1. При использовании Bind Mount (./data): необходимость ручной установки прав
+      #    для пользователя внутри контейнера: `sudo chown -R 65534:65534 ./data`.
+      # 2. При использовании Named Volume (prometheus_data): автоматическое управление правами Docker,
+      #    хранение файлов во внутренних структурах Docker.
       - ./data:/prometheus
 
     command:
-      # Указываем путь к конфигу внутри контейнера.
+      # Указание пути к файлу конфигурации внутри контейнера.
       - '--config.file=/etc/prometheus/prometheus.yml'
-      # Указываем, где хранить базу данных (совпадает с путем в volumes выше).
+      # Указание директории для хранения базы данных.
       - '--storage.tsdb.path=/prometheus'
-      # Папки для служебных шаблонов (нужны для работы веб-интерфейса).
+      # Настройка путей для служебных библиотек и шаблонов консоли (для веб-интерфейса).
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
     
-    # Режим "host" для упрощения: Prometheus видит всех соседей на localhost.
+    # Режим сети "host".
+    # Назначение: упрощение обнаружения сервисов на localhost.
     network_mode: "host"
 
   alertmanager:
@@ -35,12 +36,12 @@ services:
     container_name: alertmanager
     restart: unless-stopped
     volumes:
-      # Конфиг: куда слать уведомления (Telegram, Email и т.д.).
+      # Конфигурация: параметры отправки уведомлений (Telegram, Email).
       - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-      # Хранилище состояний: заглушенные алерты (Silences).
+      # Хранилище состояний: данные о заглушённых алертах (Silences).
       # ПРИМЕЧАНИЕ ПО ПРАВАМ:
-      # Требует прав пользователя 'nobody' (UID 65534), как и Prometheus.
-      # `sudo chown -R 65534:65534 ./alertmanager_data`
+      # Требование прав пользователя 'nobody' (UID 65534).
+      # Команда: `sudo chown -R 65534:65534 ./alertmanager_data`
       - ./alertmanager_data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
@@ -52,20 +53,20 @@ services:
     container_name: grafana
     restart: unless-stopped
     volumes:
-      # Здесь хранятся созданные тобой дашборды и настройки пользователей.
-      # База данных SQLite (grafana.db) лежит именно тут.
+      # Хранилище пользовательских данных (дашборды, база grafana.db).
       # ПРИМЕЧАНИЕ ПО ПРАВАМ:
-      # Для Bind Mount (./grafana_data) нужно отдать папку пользователю Grafana:
-      # `sudo chown -R 472:472 ./grafana_data`
+      # Для Bind Mount (./grafana_data) требование прав пользователя Grafana (UID 472).
+      # Команда: `sudo chown -R 472:472 ./grafana_data`
       - ./grafana_data:/var/lib/grafana
     environment:
-      # Настройки "из коробки" через переменные окружения.
+      # Инициализация параметров через переменные окружения.
       - GF_SECURITY_ADMIN_USER=admin     # Логин администратора
       - GF_SECURITY_ADMIN_PASSWORD=admin # Пароль администратора
-      - GF_USERS_ALLOW_SIGN_UP=false     # Запрет регистрации новых пользователей
+      - GF_USERS_ALLOW_SIGN_UP=false     # Отключение регистрации новых пользователей
     network_mode: "host"
 
-  # Локальный агент для самого сервера мониторинга (чтобы мониторить мониторинг) подробные комментарии в node-exporter.
+  # Локальный агент (Node Exporter) для мониторинга самого сервера мониторинга.
+  # Детальное описание в разделе node-exporter.
   node-exporter:
     image: prom/node-exporter:latest
     container_name: prometheus_node_exporter
@@ -80,4 +81,3 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     network_mode: "host"
     pid: "host"
-

@@ -1,29 +1,29 @@
 # [MASTER COMPOSE]
-# Этот файл объединяет все микросервисы проекта в единый стек.
-# Использует механизм 'include', доступный в Docker Compose v2.20+.
+# Назначение: объединение микросервисов проекта в единый стек.
+# Требование: поддержка механизма 'include' (Docker Compose v2.20+).
 #
-# ЗАПУСК:
+# Команда запуска:
 # docker compose up -d
 
-# Подключаем композ-файлы из подпапок.
-# Порядок не важен для запуска, но важен для понимания структуры.
+# Подключение модулей (compose-файлов) из поддиректорий.
+# Примечание: порядок подключения не влияет на очередность запуска сервисов.
 include:
-  # 1. Приложение (FastAPI)
+  # 1. Стек приложения (FastAPI)
   - path:
       - app-stack/docker-compose.yml
 
-  # 2. Мониторинг (Prometheus, Grafana, Alertmanager)
+  # 2. Стек мониторинга (Prometheus, Grafana, Alertmanager)
   - path:
       - prometheus-stack/docker-compose.yml
 
-  # 3. База данных (Postgres)
+  # 3. Стек базы данных (Postgres)
   - path:
       - postgres-stack/docker-compose.yml
 
-  # 4. Веб-сервер (Nginx)
+  # 4. Стек веб-сервера (Nginx)
   - path:
       - nginx-stack/docker-compose.yml
 
-  # 5. Агент мониторинга контейнеров (cAdvisor)
+  # 5. Стек мониторинга контейнеров (cAdvisor)
   - path:
       - cadvisor-stack/docker-compose.yml

@@ -1,42 +1,41 @@
 services:
-  # [DATABASE] Основной контейнер PostgreSQL
+  # [DATABASE] Сервис PostgreSQL.
   postgres:
-    image: postgres:16                # Используем актуальную 16-ю версию
+    image: postgres:16                # Версия образа: 16.
     container_name: postgres
     restart: unless-stopped
     environment:
-      # [CREDENTIALS] Настройки доступа к базе.
-      # Эти параметры задаются только ПРИ ПЕРВОМ запуске (создание БД).
-      POSTGRES_USER: postgres         # Имя суперпользователя
-      POSTGRES_PASSWORD: password     # Пароль (ОБЯЗАТЕЛЬНО смени в реальном проекте)
-      POSTGRES_DB: mydatabase        # Имя базы данных, которая создастся автоматически
+      # [CREDENTIALS] Настройки доступа (инициализация БД).
+      # Примечание: применение параметров только при первом запуске (создании тома).
+      POSTGRES_USER: postgres         # Имя суперпользователя.
+      POSTGRES_PASSWORD: password     # Пароль.
+      POSTGRES_DB: mydatabase        # Имя базы данных для автоматического создания.
     volumes:
-      # [PERSISTENCE] Хранилище самой базы данных.
-      # ПРИМЕЧАНИЕ ПО ПРАВАМ:
-      # На Linux папка ./data должна принадлежать пользователю 'postgres' (UID 999).
-      # Команда: `sudo chown -R 999:999 ./data`
+      # [PERSISTENCE] Персистентное хранилище данных.
+      # ПРИМЕЧАНИЕ ПО ПРАВАМ (Linux):
+      # Требование: владение проброшеной директорией ./data пользователем 'postgres' (UID 999).
+      # Необходимая команда: `sudo chown -R 999:999 ./data`
       - ./data:/var/lib/postgresql/data
     ports:
-      # Проброс стандартного порта 5432. 
-      # Позволяет подключаться к базе через DBeaver, pgAdmin или твое приложение.
+      # Проброс стандартного порта 5432.
+      # Назначение: внешний доступ (DBeaver, pgAdmin, приложение).
       - "5432:5432"
 
-  # [TRANSLATOR] Экспортер для сбора метрик PostgreSQL
-  # Он подключается к базе как обычный клиент и считывает статистику (кол-во транзакций, размер таблиц и т.д.)
+  # [TRANSLATOR] Сервис экспортера метрик (PostgreSQL Exporter).
+  # Принцип работы: подключение в режиме клиента для чтения системной статистики (транзакции, размеры таблиц).
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter
     container_name: postgres-exporter
     restart: unless-stopped
     environment:
       # [CONNECTION] Строка подключения (DSN).
-      # Экспортер должен знать, как зайти в базу.
-      # Синтаксис: postgresql://ЛОГИН:ПАРОЛЬ@ИМЯ_СЕРВИСА:ПОРТ/ИМЯ_БД?sslmode=disable
-      # Мы используем имя 'postgres', так как Docker Compose создаст внутреннюю сеть.
+      # Назначение: аутентификация экспортера в базе данных.
+      # Синтаксис: postgresql://LOGIN:PASS@HOST:PORT/DBNAME?sslmode=disable
+      # Использование DNS-имени сервиса 'postgres' во внутренней сети Docker.
       DATA_SOURCE_NAME: "postgresql://postgres:password@postgres:5432/mydatabase?sslmode=disable"
     ports:
-      # Стандартный порт, по которому Prometheus забирает метрики из БД.
-      # Этот порт (9187) мы указывали в prometheus.yml.
+      # Порт для сбора метрик Prometheus (стандартный 9187).
       - "9187:9187"
     depends_on:
-      # Экспортер не должен пытаться подключиться, пока база не запустится.
+      # Зависимость запуска от готовности сервиса базы данных.
       - postgres

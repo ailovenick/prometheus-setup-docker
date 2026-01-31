@@ -1,32 +1,30 @@
 services:
-  # [WEB SERVER] Основной контейнер Nginx.
-  # Сам по себе Nginx не умеет отдавать данные в формате, который понимает Prometheus.
+  # [WEB SERVER] Сервис Nginx.
+  # Примечание: отсутствие нативной поддержки формата метрик Prometheus.
   nginx:
     image: nginx:latest
     container_name: nginx
     restart: unless-stopped
     volumes:
-      # Прокидываем наш конфиг с разрешенным /stub_status.
+      # Монтирование конфигурационного файла с активным /stub_status.
       - ./config/default.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
-      # Проброс: заходим на http://localhost:8081 - попадаем в Nginx на порт 80.
+      # Проброс портов: хост 8081 -> контейнер 80.
       - "8081:80"
 
-  # [TRANSLATOR] Контейнер-экспортер.
-  # Это "переводчик". Он берет текст из http://nginx/stub_status, 
-  # превращает его в метрики (типа nginx_http_requests_total) и отдает их Prometheus.
+  # [TRANSLATOR] Сервис экспортера метрик (Nginx Prometheus Exporter).
+  # Функционал: преобразование данных из http://nginx/stub_status в формат метрик Prometheus.
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:latest
     container_name: nginx-exporter
     restart: unless-stopped
     command:
-      # Указываем экспортеру, где искать Nginx. 
-      # "nginx:80" — это имя сервиса выше и его порт внутри Docker-сети.
+      # Определение целевого URI для сбора метрик.
+      # "nginx:80" — DNS-имя сервиса и порт во внутренней сети Docker.
       - '-nginx.scrape-uri=http://nginx:80/stub_status'
     ports:
-      # Стандартный порт, по которому Prometheus будет забирать метрики.
-      # Этот порт (9113) мы прописывали в prometheus.yml.
+      # Порт для отдачи метрик Prometheus (стандартный 9113).
       - "9113:9113"
-    # Ждем, пока запустится основной Nginx, прежде чем включать "переводчик".
+    # Определение зависимости запуска от сервиса nginx.
     depends_on:
       - nginx

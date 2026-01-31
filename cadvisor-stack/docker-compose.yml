@@ -1,34 +1,32 @@
 services:
   # cAdvisor (Container Advisor)
-  # Собирает метрики потребления ресурсов (CPU, RAM, Network) по каждому контейнеру отдельно.
+  # Сбор метрик потребления ресурсов (CPU, RAM, Network) по каждому контейнеру.
   #
-  # [ПОЧЕМУ НЕЛЬЗЯ ОСТАВИТЬ ТОЛЬКО ЕГО?]
-  # cAdvisor показывает, СКОЛЬКО ресурсов потребляют процессы (CPU Usage).
-  # Но он НЕ ВИДИТ состояние "здоровья" самого сервера:
-  # 1. Не знает свободного места на диске (Disk Space Available) - это делает Node Exporter.
-  # 2. Не показывает Load Average системы.
-  # Поэтому для полноценного мониторинга нужны ОБА: Node Exporter (Хост) + cAdvisor (Контейнеры).
+  # [НАЗНАЧЕНИЕ И ОТЛИЧИЯ]
+  # cAdvisor: отображение потребления ресурсов процессами (CPU Usage).
+  # Ограничение: отсутствие данных о "здоровье" хоста (свободное место на диске, Load Average).
+  # Рекомендация: совместное использование с Node Exporter для полного мониторинга (Хост + Контейнеры).
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
     restart: unless-stopped
-    # ВАЖНО: Для доступа к статистике ядра и Docker-сокетам
+    # Монтирование системных директорий для доступа к статистике ядра и Docker-сокетам (read-only)
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
-    # Включаем привилегированный режим для доступа к железу (нужен не всегда, но часто помогает на Linux)
+    # Включение привилегированного режима для доступа к аппаратным ресурсам
     privileged: true
     devices:
       - /dev/kmsg
     command:
-      # [OPTIMIZATION] Ограничиваем область видимости только Docker-контейнерами.
+      # [OPTIMIZATION] Ограничение области видимости только Docker-контейнерами
       - '--docker_only=true'
-      # [OPTIMIZATION] Увеличиваем интервал опроса до 10 секунд (вместо 1с по умолчанию).
+      # [OPTIMIZATION] Увеличение интервала опроса до 10 секунд (по умолчанию 1с)
       - '--housekeeping_interval=10s'
-      # [OPTIMIZATION] Отключаем тяжелые метрики (disk usage, per-cpu stats, network sockets).
+      # [OPTIMIZATION] Отключение ресурсоемких метрик (disk usage, per-cpu stats, network sockets)
       - '--disable_metrics=disk,tcp,udp,percpu,sched,process'
-    # Использует порт 8080. Конфликтует с Nginx, если тот тоже на 8080!
+    # Использование network_mode: "host" (порт 8080).
     network_mode: "host"
