@@ -20,8 +20,21 @@ route:
   # Рекомендуется ставить от 3h до 24h, чтобы не "спамить".
   repeat_interval: 1h
   
-  # Кому слать по умолчанию
+  # Кому слать по умолчанию (если ни одно правило ниже не сработало)
   receiver: 'blackhole'
+
+  # [ВАЖНО] Правила маршрутизации
+  routes:
+    # Отправляем Critical и Warning в Telegram
+    - matchers:
+        - severity =~ "critical|warning"
+      receiver: 'telegram-alerts'
+      continue: true # Продолжить, чтобы проверить правило для Email
+
+    # Отправляем только Critical на Email (ОТКЛЮЧЕНО)
+    # - matchers:
+    #     - severity = "critical"
+    #   receiver: 'email-alerts'
 
 # [RECEIVERS] Получатели уведомлений
 receivers:
@@ -31,17 +44,20 @@ receivers:
   # 2. Пример настройки Telegram
   - name: 'telegram-alerts'
     telegram_configs:
-      - bot_token: 'ВАШ_ТОКЕН_БОТА' # Получается у @BotFather
+      - bot_token: 'bot_token' # Получается у @BotFather
         chat_id: 123456789         # Твой ID или ID группы (узнать у @userinfobot)
         parse_mode: 'HTML'
         # Сообщение, которое придет в телеграм:
         message: '<b>{{ .Status | toUpper }}</b>: {{ .CommonAnnotations.summary }}\n{{ .CommonAnnotations.description }}'
 
-  # 3. Пример настройки Email
-  - name: 'email-alerts'
-    email_configs:
-      - to: 'admin@example.com'
-        from: 'monitoring@example.com'
-        smarthost: 'smtp.gmail.com:587'
-        auth_username: 'user@example.com'
-        auth_password: 'password'
+  # 3. Пример настройки Email (ОТКЛЮЧЕНО)
+  # - name: 'email-alerts'
+  #   email_configs:
+  #     - to: 'admin@example.com'
+  #       from: 'monitoring@example.com'
+  #       smarthost: 'smtp.gmail.com:587'
+  #       auth_username: 'user@example.com'
+  #       auth_password: 'password'
+  #       # Дефолтный заголовок письма, можно тоже шаблонизировать
+  #       headers:
+  #         Subject: 'Prometheus Alert: {{ .GroupLabels.alertname }}'
