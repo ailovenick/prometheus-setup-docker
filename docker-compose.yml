@@ -20,7 +20,7 @@ include:
   - path:
       - postgres-stack/docker-compose.yml
 
-  # 4. Веб-сервер (Nginx - входная точка)
+  # 4. Веб-сервер (Nginx)
   - path:
       - nginx-stack/docker-compose.yml
 
