@@ -1,6 +1,7 @@
 global:
   scrape_interval: 15s     # Интервал сбора метрик
   evaluation_interval: 15s # Интервал проверки правил алертов
+  scrape_timeout: 10s      # Таймаут сбора (защита от зависаний, < scrape_interval)
 
 alerting:
   alertmanagers:
@@ -12,14 +13,14 @@ rule_files:
 
 scrape_configs:
   # --- ИНФРАСТРУКТУРА (ХОСТЫ) ---
-
+  # !неиспользуемые блоки необходимо закомментировать!
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090'] # Метрики сервера Prometheus
 
   - job_name: 'node-exporter'
     static_configs:
-      - targets: ['localhost:9100'] # Метрики ОС Linux (CPU, Disk, Mem)
+      - targets: ['localhost:9100', 'remoteip:9100'] # Метрики ОС Linux с 2х хостов
       
   - job_name: 'cadvisor'
     static_configs:
@@ -27,7 +28,7 @@ scrape_configs:
 
   - job_name: 'windows-exporter'
     static_configs:
-       - targets: ['192.168.1.183:9182', '192.168.1.184:9182'] # Метрики ОС Windows
+       - targets: ['192.168.1.183:9182', '192.168.1.184:9182'] # Метрики ОС Windows с 2х хостов
 
   # --- СЕРВИСЫ (БАЗЫ И ПРОКСИ) ---
 
@@ -42,3 +43,14 @@ scrape_configs:
   - job_name: 'python-app'
     static_configs:
       - targets: ['localhost:8000'] # Метрики Python-приложения (FastAPI)
+
+  # --- РАСШИРЕНЫЙ ПРИМЕР ---
+  # путь, интервал и ключевые теги:
+  # - job_name: 'custom-service-example'
+  #   metrics_path: '/metrics'             # Путь к метрикам (по умолчанию /metrics)
+  #   scrape_interval: 30s                 # Индивидуальный интервал сбора
+  #   static_configs:
+  #     - targets: ['192.168.1.50:8080']
+  #       labels:
+  #         env: 'production'              # Окружение (prod/stage)
+  #         service: 'auth-backend'        # Имя сервиса для группировки
